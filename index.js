@@ -1,4 +1,12 @@
 require("dotenv").config();
+
+console.log("Serverless function initializing...");
+console.log("Is MONGO_URL present:", !!process.env.MONGO_URL);
+console.log("Is JWT_SECRET present:", !!process.env.JWT_SECRET);
+
+require("dotenv").config();
+const express = require("express");
+// ... rest of your code
 const express = require("express");
 const app = express();
 const mongoose = require("mongoose");
@@ -16,17 +24,18 @@ const { UserModel } = require("./model/UserModel");
 
 const PORT = process.env.PORT || 3002;
 const uri = process.env.MONGO_URL;
-
-// --- FIX #1: SPECIFIC CORS CONFIGURATION ---
-// We must explicitly tell the backend which frontend URL is allowed to make requests.
-// Replace this URL with your actual deployed frontend URL.
-const allowedOrigins = [
+ 
+ const allowedOrigins = [
   'https://stock-trading-frontend-phi.vercel.app', 
-  'http://localhost:3000' // Also allow your local frontend for testing
+  'http://localhost:3000' 
 ];
+// --- END OF FIX ---
 
 const corsOptions = {
   origin: function (origin, callback) {
+    // This log will show you what the browser is sending as the origin
+    console.log("Request Origin:", origin); 
+
     if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
       callback(null, true);
     } else {
@@ -34,26 +43,25 @@ const corsOptions = {
     }
   }
 };
-app.use(cors(corsOptions)); // Use the specific options instead of the default
-// --- END OF FIX #1 ---
+
+app.use(cors(corsOptions));
+ 
 
 app.use(bodyParser.json());
 app.use(passport.initialize());
 
 passport.use(UserModel.createStrategy());
 
-// --- FIX #2: IMPROVED SECURITY FOR JWT SECRET ---
-// We remove the hardcoded fallback value. If JWT_SECRET is missing from the
-// environment variables, the server should crash. This makes errors easier to find.
+ 
 const jwtOptions = {
   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-  secretOrKey: process.env.JWT_SECRET, // The fallback "|| '#$abcdTT'" is removed.
+  secretOrKey: process.env.JWT_SECRET,  
 };
-// --- END OF FIX #2 ---
+ 
 
 passport.use(
   new JwtStrategy(jwtOptions, async (jwt_payload, done) => {
-    // ... (rest of the function is correct)
+   
     try {
       const user = await UserModel.findById(jwt_payload.id);
       if (user) { return done(null, user); } 
@@ -64,9 +72,9 @@ passport.use(
   })
 );
 
-// --- All your routes remain the same ---
+ 
 app.post("/api/auth/signup", async (req, res) => {
-  // ... your signup code ...
+ 
   try {
     const { email, password } = req.body;
     const newUser = new UserModel({ email: email });
@@ -78,7 +86,7 @@ app.post("/api/auth/signup", async (req, res) => {
 });
 
 app.post("/api/auth/login", (req, res, next) => {
-  // ... your login code ...
+   
   passport.authenticate('local', { session: false }, (err, user, info) => {
     if (err) { return next(err); }
     if (!user) { return res.status(401).json({ message: info.message || "Login failed" }); }
